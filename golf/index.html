@@ -4,75 +4,28 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Paper Golf</title>
-    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
     <link rel="stylesheet" href="style.css">
 </head>
-<body class="w3-light-grey">
-    <div class="w3-container">
-        <section class="w3-card-4 w3-white w3-round-large w3-padding w3-margin-bottom">
-            <div class="w3-container w3-center w3-theme-d4 w3-round-large w3-margin-bottom">
-                <h2 class="w3-text-black">Paper Golf</h2>
+<body>
+    <div class="app-container">
+        <main class="game-board fullscreen">
+            <div class="canvas-wrapper">
+                <canvas id="golfCanvas" onclick="handleCanvasClick(event)"></canvas>
             </div>
-
-            <div class="w3-row-padding game-board">
-                <div class="w3-col s12 m5 l4 controls-panel">
-                    <div class="w3-card-4 w3-light-grey w3-round-large w3-padding control-box">
-                        <h3 class="w3-text-black">Controlli</h3>
-                        <label class="w3-text-dark"><strong>Seleziona difficoltà</strong></label>
-                        <select id="difficulty" class="w3-select w3-border w3-round-large">
-                            <option value="easy">Facile</option>
-                            <option value="medium">Medio</option>
-                            <option value="hard">Difficile</option>
-                        </select>
-                        <button id="generateMapBtn" class="w3-button w3-teal w3-round-large w3-block w3-margin-top" onclick="generateMap()">Genera mappa</button>
-
-                        <div class="status-box w3-margin-top">
-                            <p id="rollInfo"><strong>Dado:</strong> -</p>
-                            <p id="strokeInfo"><strong>Colpi:</strong> 0</p>
-                        </div>
-
-                        <div class="direction-grid w3-margin-top">
-                            <button class="dir-button" data-dir="NW" onclick="handleDirection('NW')" title="Su-Sinistra">↖</button>
-                            <button class="dir-button" data-dir="N" onclick="handleDirection('N')" title="Su">↑</button>
-                            <button class="dir-button" data-dir="NE" onclick="handleDirection('NE')" title="Su-Destra">↗</button>
-                            <button class="dir-button" data-dir="W" onclick="handleDirection('W')" title="Sinistra">←</button>
-                            <button class="dir-button disabled" disabled title="Centro">•</button>
-                            <button class="dir-button" data-dir="E" onclick="handleDirection('E')" title="Destra">→</button>
-                            <button class="dir-button" data-dir="SW" onclick="handleDirection('SW')" title="Giu-Sinistra">↙</button>
-                            <button class="dir-button" data-dir="S" onclick="handleDirection('S')" title="Giu">↓</button>
-                            <button class="dir-button" data-dir="SE" onclick="handleDirection('SE')" title="Giu-Destra">↘</button>
-                        </div>
-
-                        <div class="action-grid w3-margin-top">
-                            <button id="moveOneBtn" class="w3-button w3-blue w3-round-large" onclick="prepMoveOne()">Muovi 1 cella</button>
-                            <button id="rollDiceBtn" class="w3-button w3-orange w3-round-large" onclick="rollDice()">Lancia il dado</button>
-                            <button id="takeShotBtn" class="w3-button w3-green w3-round-large" onclick="takeShot()">Conferma tiro</button>
-                            <button id="resetBtn" class="w3-button w3-grey w3-round-large" onclick="resetGame()">Reset partita</button>
-                        </div>
-
-                        
-                    </div>
-                </div>
-                <div class="w3-col s12 m7 l8 map-panel">
-                    <div class="w3-card-4 w3-white w3-round-large w3-padding canvas-box">
-                        <div class="w3-container w3-center w3-theme-d4 w3-round-large w3-margin-bottom">
-                            <h3 class="w3-text-black">Campo di Gioco</h3>
-                        </div>
-                        <canvas id="golfCanvas" onclick="handleCanvasClick(event)"></canvas>
-                        <div class="legend w3-margin-top">
-                            <div><span class="legend-swatch fairway"></span> Fairway</div>
-                            <div><span class="legend-swatch rough"></span> Rough</div>
-                            <div><span class="legend-swatch sand"></span> Sand</div>
-                            <div><span class="legend-swatch water"></span> Water</div>
-                            <div><span class="legend-swatch trees"></span> Trees</div>
-                            <div><span class="legend-swatch slope"></span> Slope</div>
-                        </div>
-                    </div>
-                </div>
+            
+            <div class="mini-hud">
+                <span id="strokeInfo">Colpi: 0</span>
+                <span id="rollInfo"></span>
             </div>
-        </section>
+        </main>
+
+        <div id="gameModal" class="modal-overlay">
+            <div class="modal-content">
+                <h2 id="modalTitle">Titolo</h2>
+                <div id="modalBody"></div>
+            </div>
+        </div>
     </div>
-
     <script src="script.js"></script>
 </body>
 </html>
