@@ -102,6 +102,7 @@ function initGame() {
             <option value="hard">Difficile</option>
         </select>
         <button class="btn btn-primary" onclick="startGame()">Genera Campo & Gioca</button>
+        <button class="btn btn-grey" onclick="openTutorial()">Regole del gioco</button>
     `);
 }
 
@@ -542,6 +543,32 @@ function draw() {
             ctx.arc(tx, ty, CELL_SIZE * 0.25, 0, Math.PI * 2);
             ctx.stroke();
         });
+    }
+}
+
+function openTutorial() {
+    showModal("Come si gioca", `
+        <div class="tutorial-text">
+            <p><strong>L'obiettivo:</strong> Porta la pallina (cerchio bianco) fino alla buca (cerchio scuro) con il minor numero di colpi possibile.</p>
+            <p><strong>Il Turno:</strong> A ogni turno puoi scegliere se <strong>Lanciare il Dado</strong> o fare un <strong>Movimento Sicuro di 1 cella</strong>.</p>
+            <p><strong>I Terreni e Modificatori:</strong></p>
+            <ul>
+                <li>🌿 <strong>Fairway:</strong> Dà un bonus di +1 cella al dado e ti permette di scavalcare gli alberi.</li>
+                <li>🏖️ <strong>Sabbia (Sand):</strong> Toglie 1 cella al tiro (minimo garantito 1).</li>
+                <li>🌳 <strong>Alberi / 💧 Acqua:</strong> Ostacoli invalicabili (finire in acqua annulla il tiro e ti fa riprovare).</li>
+                <li>📉 <strong>Pendii (Slope):</strong> Ti fanno scivolare automaticamente nella direzione della freccia.</li>
+            </ul>
+            <p><strong>Come tirare:</strong> Dopo il lancio del dado, vedrai delle aree blu evidenziate sulla mappa. Ticca la destinazione desiderata per confermare il tiro!</p>
+        </div>
+        <button class="btn btn-primary" onclick="backToInitOrTurn()">Ho capito</button>
+    `);
+}
+
+function backToInitOrTurn() {
+    if (gameState === 'INIT') {
+        initGame();
+    } else {
+        startTurn();
     }
 }
 
