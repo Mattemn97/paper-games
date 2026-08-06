@@ -192,3 +192,50 @@ canvas {
 .btn-orange { background: var(--btn-orange); color: #fff; }
 .btn-green { background: var(--btn-green); }
 .btn-grey { background: var(--text-muted); }
+
+
+.hud-left {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.btn-help {
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 50%;
+    border: 1px solid var(--border-color);
+    background: var(--bg-page);
+    color: var(--text-main);
+    font-weight: bold;
+    font-size: 0.9rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.btn-help:hover {
+    background: var(--btn-primary);
+    color: white;
+    border-color: var(--btn-primary);
+}
+
+/* Regole del tutorial all'interno del popup */
+.tutorial-text {
+    text-align: left;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin-bottom: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    max-height: 50vh;
+    overflow-y: auto;
+    padding-right: 0.5rem;
+}
+
+.tutorial-text strong {
+    color: var(--text-main);
+}
