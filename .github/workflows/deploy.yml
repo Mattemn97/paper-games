@@ -19,4 +19,4 @@ jobs:
           server: ftp.mattemn97.altervista.org
           username: mattemn97
           password: ${{ secrets.FTP_PASSWORD }}
-          remote-dir: /paper-games/
+          server-dir: /paper-games/
