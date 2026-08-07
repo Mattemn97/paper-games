@@ -1,0 +1,22 @@
+name: Deploy su Altervista
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  web-deploy:
+    name: Carica file via FTP
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ottieni il codice
+        uses: actions/checkout@v4
+
+      - name: Sincronizza con Altervista
+        uses: SamKirkland/FTP-Deploy-Action@v4.4.0
+        with:
+          server: ftp.mattemn97.altervista.org
+          username: mattemn97
+          password: ${{ secrets.FTP_PASSWORD }}
+          remote-dir: /paper-games/
