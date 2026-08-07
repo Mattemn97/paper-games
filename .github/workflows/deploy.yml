@@ -17,6 +17,6 @@ jobs:
         uses: SamKirkland/FTP-Deploy-Action@v4.4.0
         with:
           server: ftp.mattemn97.altervista.org
-          username: mattemn97
+          username: 'ftp@mattemn97'
           password: ${{ secrets.FTP_PASSWORD }}
           server-dir: /paper-games/
