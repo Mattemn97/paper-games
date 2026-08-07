@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rotta Navale</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <main class="game-board fullscreen">
+            <div class="canvas-wrapper">
+                <canvas id="gameCanvas" onclick="handleCanvasClick(event)"></canvas>
+            </div>
+            
+            <div class="mini-hud">
+                <div class="hud-left">
+                    <span id="strokeInfo">Turni: 0</span>
+                    <span id="buoyStatus" style="display:none; font-size: 0.9em; margin-left:10px;">🚩 Boa: ❌</span>
+                    <button class="btn-help" onclick="openTutorial()" title="Regole del gioco">?</button>
+                </div>
+                <span id="rollInfo"></span>
+            </div>
+        </main>
+
+        <div id="gameModal" class="modal-overlay">
+            <div class="modal-content">
+                <h2 id="modalTitle">Titolo</h2>
+                <div id="modalBody"></div>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
