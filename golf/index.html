@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <button class="btn-floating" onclick="openTutorial()" title="Regole del gioco">?</button>
     <div class="app-container">
         <main class="game-board fullscreen">
             <div class="canvas-wrapper">
@@ -16,7 +17,6 @@
             <div class="mini-hud">
                 <div class="hud-left">
                     <span id="strokeInfo">Colpi: 0</span>
-                    <button class="btn-help" onclick="openTutorial()" title="Regole del gioco">?</button>
                 </div>
                 <span id="rollInfo"></span>
             </div>
@@ -29,6 +29,7 @@
             </div>
         </div>
     </div>
+    <script src="../common.js"></script>
     <script src="script.js"></script>
 </body>
 </html>

@@ -55,41 +55,43 @@ const DIRECTIONS = {
     NW: { dr: -1, dc: -1 }
 };
 
-let grid = [];
-let ballPos = { r: ROWS - 3, c: Math.floor(COLS / 2) };
-let holePos = { r: 3, c: Math.floor(COLS / 2) };
-let currentRoll = null;
-let strokeCount = 0;
-let lastPath = [];
-let shotHistory = [];
-let gameOver = false;
+let state = {
+    animatingPos: null,
+    grid: [],
+    ballPos: { r: ROWS - 3, c: Math.floor(COLS / 2) },
+    holePos: { r: 3, c: Math.floor(COLS / 2) },
+    currentRoll: null,
+    strokeCount: 0,
+    lastPath: [],
+    shotHistory: [],
+    gameOver: false,
+    isStuck: false,
+    requireBuoy: false,
+    buoyCollected: true,
+    buoyPos: null,
+    gameState: 'INIT',
+    validTargets: []
+};
 
-// Nuove logiche navali
-let isStuck = false;
-let requireBuoy = false;
-let buoyCollected = true;
-let buoyPos = null;
-
-let gameState = 'INIT'; 
-let validTargets = []; 
-
-const modal = document.getElementById('gameModal');
-const modalTitle = document.getElementById('modalTitle');
-const modalBody = document.getElementById('modalBody');
-const strokeInfo = document.getElementById('strokeInfo');
-const rollInfo = document.getElementById('rollInfo');
-const buoyStatus = document.getElementById('buoyStatus');
+const DOM = {
+    modal: document.getElementById('gameModal'),
+    modalTitle: document.getElementById('modalTitle'),
+    modalBody: document.getElementById('modalBody'),
+    strokeInfo: document.getElementById('strokeInfo'),
+    rollInfo: document.getElementById('rollInfo'),
+    buoyStatus: document.getElementById('buoyStatus')
+};
 
 // UI & Modal
 function showModal(title, htmlContent) {
-    modalTitle.innerText = title;
-    modalBody.innerHTML = htmlContent;
-    modal.classList.add('active');
+    DOM.modalTitle.innerText = title;
+    DOM.modalBody.innerHTML = htmlContent;
+    DOM.modal.classList.add('active');
 }
-function hideModal() { modal.classList.remove('active'); }
+function hideModal() { DOM.modal.classList.remove('active'); }
 
 function initGame() {
-    gameState = 'INIT';
+    state.gameState = 'INIT';
     showModal("Rotta Navale", `
         <p>Seleziona la difficoltà di navigazione:</p>
         <select id="popupDifficulty" class="input-select">
@@ -110,25 +112,25 @@ function startGame() {
 }
 
 function updateHUD() {
-    strokeInfo.innerText = `Turni: ${strokeCount}`;
-    if (requireBuoy) {
-        buoyStatus.style.display = 'inline-block';
-        buoyStatus.innerText = buoyCollected ? '🚩 Boa: ✅' : '🚩 Boa: ❌';
+    DOM.strokeInfo.innerText = `Turni: ${state.strokeCount}`;
+    if (state.requireBuoy) {
+        DOM.buoyStatus.style.display = 'inline-block';
+        DOM.buoyStatus.innerText = state.buoyCollected ? '🚩 Boa: ✅' : '🚩 Boa: ❌';
     } else {
-        buoyStatus.style.display = 'none';
+        DOM.buoyStatus.style.display = 'none';
     }
 }
 
 function startTurn() {
-    if (gameOver) return;
-    gameState = 'TURN_START';
-    validTargets = [];
-    currentRoll = null;
-    rollInfo.innerText = '';
+    if (state.gameOver) return;
+    state.gameState = 'TURN_START';
+    state.validTargets = [];
+    state.currentRoll = null;
+    DOM.rollInfo.innerText = '';
     
     updateHUD();
 
-    if (isStuck) {
+    if (state.isStuck) {
         showModal("Nave Incagliata!", `
             <p>Sei finito in una secca. Devi sprecare un turno per disincagliare la barca.</p>
             <button class="btn btn-orange" onclick="disincaglia()">Disincaglia (-1 Turno)</button>
@@ -144,50 +146,65 @@ function startTurn() {
 }
 
 function disincaglia() {
-    isStuck = false;
-    strokeCount++;
+    state.isStuck = false;
+    state.strokeCount++;
     hideModal();
     startTurn();
 }
 
 function handleRollAction() {
     hideModal();
-    const die = randInt(1, 6);
-    const terrain = grid[ballPos.r][ballPos.c];
-    let modifier = 0;
+    state.gameState = 'ROLLING';
+    state.validTargets = [];
     
-    if (terrain === 'VENTO') modifier = 1;  
-    if (terrain === 'ALGHE') modifier = -1; 
-    
-    currentRoll = Math.max(1, die + modifier);
-    
-    const sign = modifier > 0 ? `+${modifier}` : modifier;
-    rollInfo.innerText = `Dado: ${currentRoll} (${die} ${sign})`;
-    
-    calculateValidTargets(currentRoll);
-    gameState = 'TARGET_SELECT';
-    draw();
+    let rollCount = 0;
+    // Effetto "roulette" dei numeri per mezzo secondo
+    const rollInterval = setInterval(() => {
+        DOM.rollInfo.innerText = `Lancio... 🎲 ${randInt(1, 6)}`;
+        rollCount++;
+        
+        if (rollCount > 10) {
+            clearInterval(rollInterval);
+            finalizeRoll(); // Chiama la vera logica
+        }
+    }, 50);
+}
+
+function finalizeRoll() {
+    PaperGames.finalizeRoll({
+        state,
+        grid: state.grid,
+        ballPos: state.ballPos,
+        draw,
+        calculateValidTargets,
+        rollInfo: DOM.rollInfo,
+        terrainModifier: terrain => {
+            if (terrain === 'VENTO' || terrain === 'FAIRWAY') return 1;
+            if (terrain === 'ALGHE' || terrain === 'SAND') return -1;
+            return 0;
+        }
+    });
 }
 
 function handleMoveOneAction() {
     hideModal();
-    currentRoll = 1;
-    rollInfo.innerText = `Mosse: 1`;
+    state.currentRoll = 1;
+    DOM.rollInfo.innerText = `Mosse: 1`;
     calculateValidTargets(1);
-    gameState = 'TARGET_SELECT';
+    state.gameState = 'TARGET_SELECT';
     draw();
 }
 
 function calculateValidTargets(distance) {
-    validTargets = [];
-    const startTerrain = grid[ballPos.r][ballPos.c];
+    state.validTargets = [];
+    const startTerrain = state.grid[state.ballPos.r][state.ballPos.c];
 
     Object.keys(DIRECTIONS).forEach(dirKey => {
         const direction = DIRECTIONS[dirKey];
-        const result = calculateShot(ballPos, direction, distance, startTerrain);
+        const result = calculateShot(state.ballPos, direction, distance, startTerrain);
         
         if (result.valid && !result.canceled) {
-            validTargets.push({
+            state.validTargets.push({
                 directionKey: dirKey,
                 targetPos: result.finalPos,
                 path: result.path,
@@ -197,14 +214,14 @@ function calculateValidTargets(distance) {
         }
     });
     
-    if (validTargets.length === 0 && distance !== 1) {
-        currentRoll = 1;
-        rollInfo.innerText = `Forzato: 1 cella`;
+    if (state.validTargets.length === 0 && distance !== 1) {
+        state.currentRoll = 1;
+        DOM.rollInfo.innerText = `Forzato: 1 cella`;
         calculateValidTargets(1);
         return;
     }
 
-    if (validTargets.length === 0) {
+    if (state.validTargets.length === 0) {
         showModal("Attenzione", `
             <p>Sei bloccato, nessuna mossa disponibile!</p>
             <button class='btn btn-grey' onclick='startTurn()'>Salta Turno</button>
@@ -214,17 +231,10 @@ function calculateValidTargets(distance) {
 
 // Interaction
 function handleCanvasClick(event) {
-    if (gameState !== 'TARGET_SELECT') return;
+    if (state.gameState !== 'TARGET_SELECT') return;
 
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / (rect.width * dpr);
-    const scaleY = canvas.height / (rect.height * dpr);
-
-    const x = (event.clientX - rect.left) * scaleX;
-    const y = (event.clientY - rect.top) * scaleY;
-
-    const clicked = { r: Math.floor(y / CELL_SIZE), c: Math.floor(x / CELL_SIZE) };
-    const target = validTargets.find(t => samePosition(t.targetPos, clicked));
+    const clicked = PaperGames.getCellFromCanvasEvent(event, canvas, CELL_SIZE, ROWS, COLS, dpr);
+    const target = state.validTargets.find(t => samePosition(t.targetPos, clicked));
 
     if (target) {
         executeShot(target);
@@ -232,35 +242,47 @@ function handleCanvasClick(event) {
 }
 
 function executeShot(targetData) {
-    strokeCount++;
-    
-    lastPath = [{ ...ballPos }, ...targetData.path];
-    shotHistory.push({ path: lastPath, landed: targetData.targetPos });
-    
-    ballPos = { ...targetData.targetPos };
-    validTargets = []; 
-    
-    if (targetData.hitBuoy) {
-        buoyCollected = true;
-    }
-    updateHUD();
+    const fullPath = targetData.path;
+    const oldPos = { ...state.ballPos };
 
-    if (targetData.winner) {
-        gameOver = true;
-        draw();
-        setTimeout(() => {
-            showModal("Attraccato in " + strokeCount + " turni!", `
-                <p>Hai raggiunto il porto in sicurezza.</p>
-                <button class="btn btn-green" onclick="initGame()">Nuova Rotta</button>
-            `);
-        }, 500);
-    } else {
-        if (grid[ballPos.r][ballPos.c] === 'SECCA') {
-            isStuck = true;
+    PaperGames.animateShot({
+        targetData,
+        path: fullPath,
+        draw,
+        delay: 100,
+        beforeShot: () => {
+            state.strokeCount++;
+            state.validTargets = [];
+            state.gameState = 'ANIMATING';
+        },
+        onFrame: cell => {
+            state.animatingPos = cell;
+        },
+        afterLanding: () => {
+            state.animatingPos = null;
+            state.ballPos = { ...targetData.targetPos };
+
+            state.lastPath = [oldPos, ...targetData.path];
+            state.shotHistory.push({ path: state.lastPath, landed: targetData.targetPos });
+
+            if (typeof updateHUD === 'function') updateHUD();
+            else DOM.strokeInfo.innerText = `Colpi: ${state.strokeCount}`;
+
+            if (targetData.hitBuoy) state.buoyCollected = true;
+
+            if (targetData.winner) {
+                state.gameOver = true;
+                draw();
+                setTimeout(() => {
+                    showModal('Vittoria!', `<p>Hai completato in ${state.strokeCount} turni.</p><button class="btn btn-green" onclick="initGame()">Gioca Ancora</button>`);
+                }, 500);
+            } else {
+                if (state.grid[state.ballPos.r][state.ballPos.c] === 'SECCA') state.isStuck = true;
+                draw();
+                setTimeout(startTurn, 600);
+            }
         }
-        draw();
-        setTimeout(startTurn, 600);
-    }
+    });
 }
 
 function calculateShot(start, direction, distance, startTerrain) {
@@ -274,26 +296,26 @@ function calculateShot(start, direction, distance, startTerrain) {
         path.push(next);
 
         // Controllo se passiamo sopra la boa
-        if (requireBuoy && !buoyCollected && buoyPos && samePosition(next, buoyPos)) {
+        if (state.requireBuoy && !state.buoyCollected && state.buoyPos && samePosition(next, state.buoyPos)) {
             hitB = true;
         }
 
         // Il Mulinello annulla il tiro solo se ci atterri sopra esattamente
-        if (grid[next.r][next.c] === 'MULINELLO' && step === distance) {
+        if (state.grid[next.r][next.c] === 'MULINELLO' && step === distance) {
             return { valid: true, canceled: true, path };
         }
 
-        if (samePosition(next, holePos)) {
+        if (samePosition(next, state.holePos)) {
             // Entri in porto solo se hai soddisfatto i requisiti della boa
-            if (!requireBuoy || buoyCollected || hitB) {
-                return { valid: true, winner: true, finalPos: holePos, hitBuoy: hitB, path };
+            if (!state.requireBuoy || state.buoyCollected || hitB) {
+                return { valid: true, winner: true, finalPos: state.holePos, hitBuoy: hitB, path };
             }
             // Altrimenti ci passi semplicemente sopra senza vincere (il porto agisce da casella normale)
         }
     }
 
     const finalPos = path[path.length - 1];
-    const finalTerrain = grid[finalPos.r][finalPos.c];
+    const finalTerrain = state.grid[finalPos.r][finalPos.c];
 
     if (finalTerrain === 'MULINELLO') return { valid: true, canceled: true, path };
 
@@ -301,9 +323,9 @@ function calculateShot(start, direction, distance, startTerrain) {
     if (slopeResult.hitBuoy) hitB = true;
 
     if (slopeResult.winner) {
-        if (!requireBuoy || buoyCollected || hitB) {
+        if (!state.requireBuoy || state.buoyCollected || hitB) {
             path.push(slopeResult.finalPos);
-            return { valid: true, winner: true, finalPos: holePos, hitBuoy: hitB, path };
+            return { valid: true, winner: true, finalPos: state.holePos, hitBuoy: hitB, path };
         }
     }
 
@@ -320,22 +342,22 @@ function resolveCorrente(position) {
     let hitB = false;
 
     while (true) {
-        const terrain = grid[current.r][current.c];
+        const terrain = state.grid[current.r][current.c];
         if (!terrain.startsWith('CORRENTE_')) break;
 
         const dirKey = terrain === 'CORRENTE_DN' ? 'S' : terrain === 'CORRENTE_UP' ? 'N' : terrain === 'CORRENTE_LF' ? 'W' : 'E';
         const next = { r: current.r + DIRECTIONS[dirKey].dr, c: current.c + DIRECTIONS[dirKey].dc };
         if (!isInside(next)) break;
         
-        if (requireBuoy && !buoyCollected && buoyPos && samePosition(next, buoyPos)) {
+        if (state.requireBuoy && !state.buoyCollected && state.buoyPos && samePosition(next, state.buoyPos)) {
             hitB = true;
         }
 
-        if (samePosition(next, holePos)) {
-            return { winner: true, finalPos: holePos, rolled: true, hitBuoy: hitB };
+        if (samePosition(next, state.holePos)) {
+            return { winner: true, finalPos: state.holePos, rolled: true, hitBuoy: hitB };
         }
 
-        const nextTerrain = grid[next.r][next.c];
+        const nextTerrain = state.grid[next.r][next.c];
         if (nextTerrain === 'MULINELLO') break; // Fermato dal mulinello
 
         current = next;
@@ -347,7 +369,7 @@ function resolveCorrente(position) {
 
 // MAP GEN
 function generateMap(difficulty = 'medium') {
-    grid = Array.from({ length: ROWS }, () => Array(COLS).fill('MARE'));
+    state.grid = Array.from({ length: ROWS }, () => Array(COLS).fill('MARE'));
     const easy = difficulty === 'easy';
     const medium = difficulty === 'medium';
     const hard = difficulty === 'hard';
@@ -359,14 +381,14 @@ function generateMap(difficulty = 'medium') {
     createCorrenti(difficulty);
     placeBuoy(difficulty);
 
-    grid[ballPos.r][ballPos.c] = 'VENTO';
-    grid[holePos.r][holePos.c] = 'VENTO';
+    state.grid[state.ballPos.r][state.ballPos.c] = 'VENTO';
+    state.grid[state.holePos.r][state.holePos.c] = 'VENTO';
 
-    strokeCount = 0;
-    lastPath = [];
-    shotHistory = [];
-    gameOver = false;
-    isStuck = false;
+    state.strokeCount = 0;
+    state.lastPath = [];
+    state.shotHistory = [];
+    state.gameOver = false;
+    state.isStuck = false;
     
     updateHUD();
     draw();
@@ -384,16 +406,16 @@ function addHazards(easy, medium, hard) {
 }
 
 function placeStartAndHole() {
-    ballPos = findRandomPositionInRows(CONFIG.startRows, ['MULINELLO']);
-    holePos = findRandomPositionInRows(CONFIG.holeRows, ['MULINELLO']);
+    state.ballPos = findRandomPositionInRows(CONFIG.startRows, ['MULINELLO']);
+    state.holePos = findRandomPositionInRows(CONFIG.holeRows, ['MULINELLO']);
 }
 
 function createVento(difficulty) {
-    let path = findPath(ballPos, holePos, ['MULINELLO']) || findPath(ballPos, holePos, []);
+    let path = findPath(state.ballPos, state.holePos, ['MULINELLO']) || findPath(state.ballPos, state.holePos, []);
     if (!path) return;
 
     path.forEach(cell => {
-        if (grid[cell.r][cell.c] !== 'MULINELLO') grid[cell.r][cell.c] = 'VENTO';
+        if (state.grid[cell.r][cell.c] !== 'MULINELLO') state.grid[cell.r][cell.c] = 'VENTO';
     });
     const radius = CONFIG.vento.radius[difficulty] ?? 2;
     const baseFill = CONFIG.vento.baseFill[difficulty] ?? 0.75;
@@ -403,8 +425,8 @@ function createVento(difficulty) {
             for (let dc = -radius; dc <= radius; dc++) {
                 const r = cell.r + dr, c = cell.c + dc;
                 if (!isInside({ r, c }) || Math.abs(dr) + Math.abs(dc) > radius + 1) continue;
-                if (grid[r][c] === 'MARE' && Math.random() < Math.max(0.25, baseFill - (Math.abs(dr) + Math.abs(dc)) * 0.2)) {
-                    grid[r][c] = 'VENTO';
+                if (state.grid[r][c] === 'MARE' && Math.random() < Math.max(0.25, baseFill - (Math.abs(dr) + Math.abs(dc)) * 0.2)) {
+                    state.grid[r][c] = 'VENTO';
                 }
             }
         }
@@ -417,7 +439,7 @@ function createAlgheAndSecche(easy, medium, hard) {
     
     for (let r = 0; r < ROWS; r++) {
         for (let c = 0; c < COLS; c++) {
-            if (grid[r][c] === 'MARE') {
+            if (state.grid[r][c] === 'MARE') {
                 seedsAlghe.push({ r, c });
                 seedsSecche.push({ r, c });
             }
@@ -431,7 +453,7 @@ function createAlgheAndSecche(easy, medium, hard) {
     // Alghe
     for (let i = 0; i < CONFIG.hazards.alghe[level] && seedsAlghe.length > 0; i++) {
         const seed = seedsAlghe.pop();
-        if (grid[seed.r][seed.c] === 'MARE') {
+        if (state.grid[seed.r][seed.c] === 'MARE') {
             createBlob('ALGHE', seed, randInt(CONFIG.hazards.algheSize[level][0], CONFIG.hazards.algheSize[level][1]), { avoid: ['MULINELLO', 'VENTO', 'ALGHE'] });
         }
     }
@@ -439,8 +461,8 @@ function createAlgheAndSecche(easy, medium, hard) {
     // Secche (singole celle sparse)
     for (let i = 0; i < CONFIG.hazards.secche[level] && seedsSecche.length > 0; i++) {
         const seed = seedsSecche.pop();
-        if (grid[seed.r][seed.c] === 'MARE' && !samePosition(seed, ballPos) && !samePosition(seed, holePos)) {
-            grid[seed.r][seed.c] = 'SECCA';
+        if (state.grid[seed.r][seed.c] === 'MARE' && !samePosition(seed, state.ballPos) && !samePosition(seed, state.holePos)) {
+            state.grid[seed.r][seed.c] = 'SECCA';
         }
     }
 }
@@ -451,8 +473,8 @@ function createCorrenti(difficulty) {
     const slopeTypes = ['CORRENTE_DN', 'CORRENTE_UP', 'CORRENTE_LF', 'CORRENTE_RT'];
     for (let r = 0; r < ROWS; r++) {
         for (let c = 0; c < COLS; c++) {
-            if (grid[r][c] === 'VENTO' && !samePosition({ r, c }, ballPos) && !samePosition({ r, c }, holePos) && Math.random() < slopeChance) {
-                grid[r][c] = slopeTypes[randInt(0, slopeTypes.length - 1)];
+            if (state.grid[r][c] === 'VENTO' && !samePosition({ r, c }, state.ballPos) && !samePosition({ r, c }, state.holePos) && Math.random() < slopeChance) {
+                state.grid[r][c] = slopeTypes[randInt(0, slopeTypes.length - 1)];
             }
         }
     }
@@ -460,13 +482,13 @@ function createCorrenti(difficulty) {
 
 function placeBuoy(difficulty) {
     if (difficulty === 'hard') {
-        requireBuoy = true;
-        buoyCollected = false;
+        state.requireBuoy = true;
+        state.buoyCollected = false;
         const middleRows = [7, 8, 9, 10];
         const candidates = [];
         middleRows.forEach(r => {
             for(let c = 1; c < COLS - 1; c++) {
-                if (grid[r][c] === 'MARE' || grid[r][c] === 'VENTO') {
+                if (state.grid[r][c] === 'MARE' || state.grid[r][c] === 'VENTO') {
                     candidates.push({r, c});
                 }
             }
@@ -474,174 +496,65 @@ function placeBuoy(difficulty) {
         
         if (candidates.length > 0) {
             shuffleArray(candidates);
-            buoyPos = candidates[0];
+            state.buoyPos = candidates[0];
         } else {
-            buoyPos = { r: 8, c: Math.floor(COLS/2) }; 
+            state.buoyPos = { r: 8, c: Math.floor(COLS/2) }; 
         }
     } else {
-        requireBuoy = false;
-        buoyCollected = true;
-        buoyPos = null;
+        state.requireBuoy = false;
+        state.buoyCollected = true;
+        state.buoyPos = null;
     }
 }
 
 
 function findRandomPositionInRows(rows, avoidTerrains) {
     const candidates = [];
-    rows.forEach(r => { for (let c = 0; c < COLS; c++) if (!avoidTerrains.includes(grid[r][c])) candidates.push({ r, c }); });
-    if (candidates.length) return candidates[randInt(0, candidates.length - 1)];
+    rows.forEach(r => { for (let c = 0; c < COLS; c++) if (!avoidTerrains.includes(state.grid[r][c])) candidates.push({ r, c }); });
+    if (candidates.length) return candidates[PaperGames.randInt(0, candidates.length - 1)];
     return { r: rows[0], c: Math.floor(COLS / 2) };
 }
 
 function findPath(start, goal, avoidTerrains) {
-    const queue = [start], visited = Array.from({ length: ROWS }, () => Array(COLS).fill(false)), parent = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
-    visited[start.r][start.c] = true;
-    while (queue.length) {
-        const current = queue.shift();
-        if (samePosition(current, goal)) {
-            const path = []; let node = current;
-            while (node) { path.unshift(node); node = parent[node.r][node.c]; }
-            return path;
-        }
-        for (const dir of Object.values(DIRECTIONS)) {
-            const next = { r: current.r + dir.dr, c: current.c + dir.dc };
-            if (!isInside(next) || visited[next.r][next.c] || avoidTerrains.includes(grid[next.r][next.c])) continue;
-            visited[next.r][next.c] = true; parent[next.r][next.c] = current; queue.push(next);
-        }
-    }
-    return null;
+    return PaperGames.findPath(start, goal, state.grid, ROWS, COLS, DIRECTIONS, avoidTerrains);
 }
 
 function createBlob(type, seed, size, options) {
-    const { avoid } = options; const cells = [{ ...seed }]; let index = 0;
-    if (!isInside(seed) || avoid.includes(grid[seed.r][seed.c]) || grid[seed.r][seed.c] !== 'MARE') return;
-    grid[seed.r][seed.c] = type;
-    while (cells.length < size && index < cells.length) {
-        const neighbors = getNeighbors(cells[index++]).filter(n => isInside(n) && !avoid.includes(grid[n.r][n.c]) && grid[n.r][n.c] === 'MARE');
-        shuffleArray(neighbors);
-        for (const n of neighbors) {
-            if (cells.length >= size) break;
-            if (grid[n.r][n.c] === 'MARE') { grid[n.r][n.c] = type; cells.push(n); }
-        }
-    }
+    return PaperGames.createBlob(state.grid, type, seed, size, { ...options, baseTerrain: options?.baseTerrain || 'MARE' }, ROWS, COLS);
 }
 
-function getNeighbors(cell) { return [{ dr: -1, dc: 0 }, { dr: 1, dc: 0 }, { dr: 0, dc: -1 }, { dr: 0, dc: 1 }, { dr: -1, dc: -1 }, { dr: -1, dc: 1 }, { dr: 1, dc: -1 }, { dr: 1, dc: 1 }].map(d => ({ r: cell.r + d.dr, c: cell.c + d.dc })); }
-function shuffleArray(arr) { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } }
-function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
-function isInside(pos) { return pos.r >= 0 && pos.r < ROWS && pos.c >= 0 && pos.c < COLS; }
-function samePosition(a, b) { return a.r === b.r && a.c === b.c; }
+function getNeighbors(cell) {
+    return PaperGames.getNeighbors(cell);
+}
+function shuffleArray(arr) {
+    PaperGames.shuffleArray(arr);
+}
+function randInt(min, max) { return PaperGames.randInt(min, max); }
+function isInside(pos) { return PaperGames.isInside(pos, ROWS, COLS); }
+function samePosition(a, b) { return PaperGames.samePosition(a, b); }
 
 // DRAW
 function draw() {
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    for (let r = 0; r < ROWS; r++) {
-        for (let c = 0; c < COLS; c++) {
-            const type = grid[r][c];
-            ctx.fillStyle = TERRAIN[type].color;
-            ctx.fillRect(c * CELL_SIZE, r * CELL_SIZE, CELL_SIZE, CELL_SIZE);
-        }
-    }
-
-    ctx.strokeStyle = 'rgba(0,0,0,0.05)';
-    ctx.lineWidth = 1;
-    for (let r = 0; r <= ROWS; r++) { ctx.beginPath(); ctx.moveTo(0, r * CELL_SIZE); ctx.lineTo(canvas.width, r * CELL_SIZE); ctx.stroke(); }
-    for (let c = 0; c <= COLS; c++) { ctx.beginPath(); ctx.moveTo(c * CELL_SIZE, 0); ctx.lineTo(c * CELL_SIZE, canvas.height); ctx.stroke(); }
-
-    ctx.font = `bold ${CELL_SIZE * 0.55}px 'Inter', sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    for (let r = 0; r < ROWS; r++) {
-        for (let c = 0; c < COLS; c++) {
-            const type = grid[r][c];
-            if (TERRAIN[type].label) {
-                ctx.fillStyle = TERRAIN[type].textColor || '#000';
-                ctx.fillText(TERRAIN[type].label, c * CELL_SIZE + CELL_SIZE / 2, r * CELL_SIZE + CELL_SIZE / 2);
-            }
-        }
-    }
-
-    if (requireBuoy && !buoyCollected && buoyPos) {
-        const bx = buoyPos.c * CELL_SIZE + CELL_SIZE / 2;
-        const by = buoyPos.r * CELL_SIZE + CELL_SIZE / 2;
-        ctx.fillStyle = '#ef4444';
-        ctx.beginPath();
-        ctx.moveTo(bx, by - CELL_SIZE * 0.35);
-        ctx.lineTo(bx + CELL_SIZE * 0.3, by);
-        ctx.lineTo(bx, by + CELL_SIZE * 0.35);
-        ctx.lineTo(bx - CELL_SIZE * 0.3, by);
-        ctx.fill();
-        ctx.fillStyle = '#ffffff';
-        ctx.font = `bold ${CELL_SIZE * 0.35}px 'Inter'`;
-        ctx.fillText('🚩', bx, by + 2);
-    }
-
-    if (shotHistory.length) {
-        ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
-        ctx.lineWidth = 2;
-        shotHistory.forEach(entry => {
-            ctx.beginPath();
-            entry.path.forEach((cell, index) => {
-                const x = cell.c * CELL_SIZE + CELL_SIZE / 2, y = cell.r * CELL_SIZE + CELL_SIZE / 2;
-                index === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-            });
-            ctx.stroke();
-        });
-    }
-
-    if (lastPath.length) {
-        ctx.strokeStyle = 'rgba(15, 23, 42, 0.6)';
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        lastPath.forEach((cell, index) => {
-            const x = cell.c * CELL_SIZE + CELL_SIZE / 2, y = cell.r * CELL_SIZE + CELL_SIZE / 2;
-            index === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-        });
-        ctx.stroke();
-    }
-
-    // Porto
-    const holeX = holePos.c * CELL_SIZE + CELL_SIZE / 2;
-    const holeY = holePos.r * CELL_SIZE + CELL_SIZE / 2;
-    ctx.fillStyle = '#94a3b8';
-    ctx.fillRect(holePos.c * CELL_SIZE + 2, holePos.r * CELL_SIZE + 2, CELL_SIZE - 4, CELL_SIZE - 4);
-    ctx.fillStyle = '#0f172a';
-    ctx.font = `bold ${CELL_SIZE * 0.5}px 'Inter'`;
-    ctx.fillText('🚢', holeX, holeY);
-
-    // Barca
-    const ballX = ballPos.c * CELL_SIZE + CELL_SIZE / 2;
-    const ballY = ballPos.r * CELL_SIZE + CELL_SIZE / 2;
-    ctx.fillStyle = '#ffffff';
-    ctx.strokeStyle = '#0f172a';
-    ctx.lineWidth = 2;
-    ctx.beginPath(); 
-    ctx.moveTo(ballX, ballY - CELL_SIZE * 0.35); 
-    ctx.lineTo(ballX + CELL_SIZE * 0.25, ballY + CELL_SIZE * 0.3);
-    ctx.lineTo(ballX - CELL_SIZE * 0.25, ballY + CELL_SIZE * 0.3);
-    ctx.closePath();
-    ctx.fill(); 
-    ctx.stroke();
-
-    if (gameState === 'TARGET_SELECT' && validTargets.length > 0) {
-        validTargets.forEach(t => {
-            const tx = t.targetPos.c * CELL_SIZE + CELL_SIZE / 2;
-            const ty = t.targetPos.r * CELL_SIZE + CELL_SIZE / 2;
-            
-            ctx.fillStyle = 'rgba(14, 165, 233, 0.35)';
-            ctx.beginPath();
-            ctx.arc(tx, ty, CELL_SIZE * 0.45, 0, Math.PI * 2);
-            ctx.fill();
-            
-            ctx.strokeStyle = '#0ea5e9';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.arc(tx, ty, CELL_SIZE * 0.25, 0, Math.PI * 2);
-            ctx.stroke();
-        });
-    }
+    PaperGames.drawScene({
+        ctx,
+        canvas,
+        grid: state.grid,
+        rows: ROWS,
+        cols: COLS,
+        cellSize: CELL_SIZE,
+        terrain: TERRAIN,
+        ballPos: state.ballPos,
+        holePos: state.holePos,
+        animatingPos: state.animatingPos,
+        gameState: state.gameState,
+        validTargets: state.validTargets,
+        lastPath: state.lastPath,
+        shotHistory: state.shotHistory,
+        buoyPos: state.buoyPos,
+        requireBuoy: state.requireBuoy,
+        buoyCollected: state.buoyCollected,
+        mode: 'boat'
+    });
 }
 
 function openTutorial() {
@@ -664,7 +577,7 @@ function openTutorial() {
 }
 
 function backToInitOrTurn() {
-    if (gameState === 'INIT') {
+    if (state.gameState === 'INIT') {
         initGame();
     } else {
         startTurn();
