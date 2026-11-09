@@ -233,10 +233,18 @@
         let current = { ...position };
         let rolled = false;
         let hitB = false;
+        const visited = new Set();
 
         while (true) {
             const terrain = engine.state.grid[current.r][current.c];
             if (!terrain.startsWith('CORRENTE_')) break;
+            // due correnti opposte e vicine rimbalzerebbero la barca all'infinito bloccando la pagina
+            const key = current.r + ',' + current.c;
+            if (visited.has(key)) {
+                window.MFLog && MFLog.warn('boat', 'Correnti in cerchio: fermo la barca per evitare un ciclo infinito', current);
+                break;
+            }
+            visited.add(key);
 
             const dirKey = terrain === 'CORRENTE_DN' ? 'S' : terrain === 'CORRENTE_UP' ? 'N' : terrain === 'CORRENTE_LF' ? 'W' : 'E';
             const dir = engine.directions[dirKey];

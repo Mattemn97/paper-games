@@ -171,10 +171,18 @@
     function resolveSlope(position, engine) {
         let current = { ...position };
         let rolled = false;
+        const visited = new Set();
 
         while (true) {
             const terrain = engine.state.grid[current.r][current.c];
             if (!terrain.startsWith('SLOPE_')) break;
+            // due pendenze opposte e vicine rimbalzerebbero la pallina all'infinito bloccando la pagina
+            const key = current.r + ',' + current.c;
+            if (visited.has(key)) {
+                window.MFLog && MFLog.warn('golf', 'Pendenze in cerchio: fermo la pallina per evitare un ciclo infinito', current);
+                break;
+            }
+            visited.add(key);
 
             const slopeDirKey = terrain === 'SLOPE_DN' ? 'S' : terrain === 'SLOPE_UP' ? 'N' : terrain === 'SLOPE_LF' ? 'W' : 'E';
             const slopeDir = engine.directions[slopeDirKey];

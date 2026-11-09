@@ -1,6 +1,10 @@
 (function (global) {
     'use strict';
 
+    // logger condiviso (mf-log.js); se manca, i log vengono ignorati
+    const noop = () => {};
+    const log = global.MFLog || { debug: noop, info: noop, warn: noop, error: noop, time: () => noop };
+
     // ==========================================
     // 1. UTILITIES E FUNZIONI MATEMATICHE
     // ==========================================
@@ -134,7 +138,11 @@
             const modalTitle = document.getElementById('modalTitle');
             const modalBody = document.getElementById('modalBody');
 
-            if (!modal || !modalTitle || !modalBody) return;
+            if (!modal || !modalTitle || !modalBody) {
+                log.error('ui', `Popup "${title}" non mostrato: mancano #gameModal/#modalTitle/#modalBody nella pagina`);
+                return;
+            }
+            log.debug('ui', `Popup: ${title}`, buttons.map(b => b.label));
 
             modalTitle.innerText = title;
             modalBody.innerHTML = htmlContent;
@@ -150,7 +158,13 @@
                     buttonEl.innerText = btn.label;
                     if (typeof btn.onClick === 'function') {
                         buttonEl.addEventListener('click', (e) => {
-                            btn.onClick(e);
+                            log.debug('ui', `Clic su "${btn.label}"`);
+                            try {
+                                btn.onClick(e);
+                            } catch (err) {
+                                // senza questo log il gioco resta fermo senza spiegazioni
+                                log.error('ui', `Errore eseguendo "${btn.label}": ${err.message}`, err.stack);
+                            }
                         });
                     }
                     btnContainer.appendChild(buttonEl);
@@ -231,13 +245,17 @@
 
         initCanvas() {
             this.canvas = document.getElementById(this.canvasId);
-            if (!this.canvas) return;
+            if (!this.canvas) {
+                log.error('motore', `Canvas #${this.canvasId} non trovato: il gioco non può disegnare`);
+                return;
+            }
 
             this.ctx = this.canvas.getContext('2d');
             this.dpr = window.devicePixelRatio || 1;
 
             this.canvas.width = this.cols * this.baseCellSize * this.dpr;
             this.canvas.height = this.rows * this.baseCellSize * this.dpr;
+            log.info('motore', `Gioco "${this.mode}" pronto: griglia ${this.cols}×${this.rows}, canvas ${this.canvas.width}×${this.canvas.height}px (dpr ${this.dpr})`);
             this.ctx.scale(this.dpr, this.dpr);
             this.cellSize = this.baseCellSize;
 
@@ -278,8 +296,16 @@
 
         startGame(difficulty = 'medium') {
             UI.hideModal();
+            log.info('partita', `Nuova partita (${this.mode}), difficoltà: ${difficulty}`);
             if (typeof this.rules.generateMap === 'function') {
-                this.rules.generateMap(difficulty, this);
+                const end = log.time('partita', 'Generazione del campo');
+                try {
+                    this.rules.generateMap(difficulty, this);
+                } catch (err) {
+                    log.error('partita', 'Generazione del campo fallita: ' + err.message, err.stack);
+                    throw err;
+                }
+                end({ partenza: this.state.playerPos, arrivo: this.state.goalPos });
             }
             this.startTurn();
         }
@@ -295,7 +321,11 @@
         }
 
         startTurn() {
-            if (this.state.gameOver) return;
+            if (this.state.gameOver) {
+                log.warn('partita', 'Turno non avviato: la partita risulta già finita');
+                return;
+            }
+            log.debug('partita', `Turno ${this.state.strokeCount + 1}, posizione`, this.state.playerPos);
 
             this.state.gameState = 'TURN_START';
             this.state.validTargets = [];
@@ -307,7 +337,10 @@
             // Hook per gestire turni speciali (es. barca incagliata)
             if (typeof this.rules.onStartTurn === 'function') {
                 const handled = this.rules.onStartTurn(this);
-                if (handled) return;
+                if (handled) {
+                    log.info('partita', 'Turno gestito da una regola speciale (es. barca incagliata)');
+                    return;
+                }
             }
 
             UI.showModal("Il tuo turno", "<p>Scegli l'azione da eseguire:</p>", [
@@ -354,6 +387,7 @@
             if (this.dom.rollInfo) {
                 this.dom.rollInfo.innerText = `Dado: ${this.state.currentRoll} (${die} ${sign})`;
             }
+            log.debug('partita', `Dado ${die}, modificatore ${modifier} per terreno ${terrain} → ${this.state.currentRoll}`);
 
             this.calculateValidTargets(this.state.currentRoll);
             this.state.gameState = 'TARGET_SELECT';
@@ -392,7 +426,9 @@
                 }
             });
 
+            log.debug('partita', `${this.state.validTargets.length} destinazioni valide a distanza ${distance}`);
             if (this.state.validTargets.length === 0 && distance !== 1) {
+                log.info('partita', `Nessuna mossa da ${distance}: forzo 1 cella`);
                 this.state.currentRoll = 1;
                 if (this.dom.rollInfo) this.dom.rollInfo.innerText = `Forzato: 1 cella`;
                 this.calculateValidTargets(1);
@@ -400,6 +436,7 @@
             }
 
             if (this.state.validTargets.length === 0) {
+                log.warn('partita', 'Giocatore bloccato: nessuna mossa disponibile, salta il turno', this.state.playerPos);
                 UI.showModal("Attenzione", "<p>Sei bloccato, nessuna mossa disponibile!</p>", [
                     {
                         label: 'Salta Turno',
@@ -428,13 +465,19 @@
         }
 
         handleCanvasClick(event) {
-            if (this.state.gameState !== 'TARGET_SELECT') return;
+            if (this.state.gameState !== 'TARGET_SELECT') {
+                log.debug('input', `Clic sul campo ignorato: stato attuale ${this.state.gameState}`);
+                return;
+            }
 
             const clicked = Utils.getCellFromCanvasEvent(event, this.canvas, this.cellSize, this.rows, this.cols, this.dpr);
             const target = this.state.validTargets.find(t => Utils.samePosition(t.targetPos, clicked));
 
             if (target) {
+                log.debug('input', `Tiro verso ${target.directionKey}`, target.targetPos);
                 this.executeShot(target);
+            } else {
+                log.debug('input', 'Clic su una cella non raggiungibile', { cella: clicked, valide: this.state.validTargets.map(t => t.targetPos) });
             }
         }
 
@@ -469,6 +512,7 @@
                     }
 
                     if (targetData.winner) {
+                        log.info('partita', `Vittoria in ${this.state.strokeCount} ${this.mode === 'boat' ? 'turni' : 'colpi'}`);
                         this.state.gameOver = true;
                         this.draw();
                         setTimeout(() => {
@@ -576,7 +620,12 @@
             function step() {
                 if (pathIndex >= path.length) {
                     if (typeof afterLanding === 'function') {
-                        afterLanding({ targetData, path });
+                        try {
+                            afterLanding({ targetData, path });
+                        } catch (err) {
+                            // l'errore avviene in un setTimeout: senza log il gioco resta fermo in ANIMATING
+                            log.error('partita', 'Errore dopo l\'atterraggio, il gioco potrebbe essersi fermato: ' + err.message, err.stack);
+                        }
                     }
                     return;
                 }
