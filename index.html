@@ -3,49 +3,68 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Paper Game</title>
-    <link rel="stylesheet" href="global_style.css">
+    <title>Paper Games · Matteo Filippini</title>
+    <meta name="description" content="Minigiochi in stile carta e penna da giocare nel browser: Paper Golf e Paper Boat.">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text x='50' y='78' font-size='80' text-anchor='middle'>✏️</text></svg>">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="mf-theme.css">
     <link rel="stylesheet" href="style.css">
+    <script src="mf-theme.js"></script>
 </head>
 <body>
-    <div class="app-container">
-        <header class="main-header">
-            <h1>Paper Game</h1>
-            <p>Seleziona un gioco per iniziare</p>
-        </header>
+    <header class="mf-topbar">
+        <a class="mf-home" href="https://mattemn97.github.io/" title="Torna al sito di Matteo Filippini"><span class="mf-mark">MF</span><span class="mf-home-name">Matteo Filippini</span></a>
+        <span class="mf-sep">/</span>
+        <h1 class="mf-app-title">Paper Games</h1>
+        <div class="mf-topbar-actions">
+            <a class="mf-icon-btn" href="https://github.com/Mattemn97/paper-games" target="_blank" rel="noopener" aria-label="Codice su GitHub"><i class="fa-brands fa-github"></i></a>
+            <button class="mf-icon-btn" id="mfTheme" type="button" aria-label="Cambia tema"><i class="fa-solid fa-circle-half-stroke"></i></button>
+        </div>
+    </header>
 
-        <main class="menu-grid">
-            <!-- Card Gioco: Paper Golf -->
-            <a href="golf/index.html" class="game-card">
-                <div class="game-card-icon golf-icon">⛳</div>
-                <div class="game-card-content">
+    <main class="mf-main">
+        <section class="mf-hero">
+            <p class="mf-eyebrow">// carta, penna e un dado</p>
+            <h1>Paper Games</h1>
+            <p>Minigiochi in stile quaderno a quadretti, con livelli generati a ogni partita. Scegli un gioco per iniziare.</p>
+        </section>
+
+        <div class="games">
+            <a href="golf/" class="mf-card game mf-anim" style="--i:0">
+                <div class="game-art golf" aria-hidden="true"><span>⛳</span></div>
+                <div class="game-body">
                     <h2>Paper Golf</h2>
                     <p>Metti la pallina in buca affrontando fairway, sabbia e ostacoli d'acqua in un campo generato proceduralmente.</p>
-                    <span class="play-badge">Gioca ora →</span>
+                    <div class="game-foot">
+                        <span class="mf-pill"><i class="fa-solid fa-dice"></i> Tiri col dado</span>
+                        <span class="play">Gioca ora <i class="fa-solid fa-arrow-right"></i></span>
+                    </div>
                 </div>
             </a>
 
-
-            <!-- Card Gioco: Paper Boat -->
-            <a href="boat/index.html" class="game-card">
-                <div class="game-card-icon boat-icon">⛵</div>
-                <div class="game-card-content">
+            <a href="boat/" class="mf-card game mf-anim" style="--i:1">
+                <div class="game-art boat" aria-hidden="true"><span>⛵</span></div>
+                <div class="game-body">
                     <h2>Paper Boat</h2>
                     <p>Guida la tua imbarcazione attraverso un mare tempestoso, evitando ostacoli e raggiungendo la meta in un gioco di navigazione strategica.</p>
-                    <span class="play-badge">Gioca ora →</span>
+                    <div class="game-foot">
+                        <span class="mf-pill"><i class="fa-solid fa-flag"></i> Gira la boa</span>
+                        <span class="play">Gioca ora <i class="fa-solid fa-arrow-right"></i></span>
+                    </div>
                 </div>
             </a>
 
-            <!-- Esempio di slot per un futuro gioco -->
-            <div class="game-card coming-soon">
-                <div class="game-card-icon">🚀</div>
-                <div class="game-card-content">
+            <div class="mf-card game soon mf-anim" style="--i:2">
+                <div class="game-art" aria-hidden="true"><span>🚀</span></div>
+                <div class="game-body">
                     <h2>Prossimamente</h2>
-                    <p>Un nuovo minigame in stile carta e penna è attualmente in fase di sviluppo.</p>
-                    <span class="play-badge muted">In arrivo</span>
+                    <p>Un nuovo minigioco in stile carta e penna è in fase di sviluppo.</p>
+                    <div class="game-foot"><span class="mf-pill"><i class="fa-solid fa-hammer"></i> In arrivo</span></div>
                 </div>
             </div>
-        </main>
-    </div>
+        </div>
+    </main>
+
+    <footer class="mf-footer">Fatto con carta, penna e JavaScript · <a href="https://mattemn97.github.io/">mattemn97.github.io</a></footer>
 </body>
 </html>
